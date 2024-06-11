@@ -1,0 +1,578 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   Int                @id @default(autoincrement())
+  firstName            String
+  lastName             String
+  role                 UserRole           @default(USER)
+  email                String             @unique
+  password             String
+  isActive             Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  stripeCustomerId     String
+  photo                String?
+  isPhoneVerified      Boolean            @default(false)
+  phone                String?
+  preferences          Json?
+  organizationId       Int
+  Ai                   Ai[]
+  AiRequest            AiRequest[]
+  coursesProgress      CourseProgress[]
+  Environment          Environment[]
+  ExerciseReview       ExerciseReview[]
+  lecturesProgress     LectureProgress[]
+  Notes                Notes[]
+  notifications        Notification[]
+  createdNotifications Notification[]     @relation("AdminCreatedNotifications")
+  reviews              Review[]
+  submissions          Submission[]
+  batches              UsersOnBatches[]
+  weeksProgress        WeekProgress[]
+  remoteDatabase       remoteDatabase[]
+  userActivity         userActivity[]
+  userMetaData         userMetaData?
+  AiPrompt             AiPrompt[]
+  userSubscription     userSubscription[]
+  VideoProgress        VideoProgress[]
+  organization         Organization[]
+}
+
+// Organization model
+model Organization {
+  id                         Int       @id @default(autoincrement())
+  name                       String
+  userId                     Int
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+  Plan                       UserPlan  @default(FREE)
+  PaidOn                     DateTime?
+  Expiry                     DateTime?
+  isActive                   Boolean
+  adminUrl                   String
+  studentUrl                 String
+  isSignUpEnabled            Boolean
+  isPhoneVerificationEnabled Boolean
+  User                       User      @relation(fields: [userId], references: [id])
+}
+
+// Membership model
+model Membership {
+  Id             Int       @id @default(autoincrement())
+  userId         Int
+  organizationId Int
+  role           UserRole  @default(USER)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  isActive       Boolean
+  plan           UserPlan  @default(FREE)
+  planRange      PlanRange @default(FREE)
+}
+
+model Batch {
+  id        Int              @id @default(autoincrement())
+  title     String           @unique
+  isActive  Boolean          @default(false)
+  capacity  Int
+  slack     String?
+  startDate String
+  endDate   String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  courseId  Int
+  mentorId  Int?
+  plan      UserPlan         @default(FREE)
+  course    Course           @relation(fields: [courseId], references: [id])
+  mentor    Mentor?          @relation(fields: [mentorId], references: [id])
+  users     UsersOnBatches[]
+}
+
+model Mentor {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  batches   Batch[]
+}
+
+model UsersOnBatches {
+  batchId Int
+  userId  Int
+  batch   Batch @relation(fields: [batchId], references: [id])
+  user    User  @relation(fields: [userId], references: [id])
+
+  @@id([batchId, userId])
+}
+
+model Course {
+  id               Int                @id @default(autoincrement())
+  title            String
+  isPublished      Boolean            @default(false)
+  cover            String?
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  slug             String?
+  language         Language[]
+  batches          Batch[]
+  progress         CourseProgress[]
+  weeks            Week[]
+  environments     Environment[]
+  notes            Notes[]
+  userSubscription userSubscription[]
+  Review           Review[]
+  ExerciseReview   ExerciseReview[]
+}
+
+model Week {
+  id          Int            @id @default(autoincrement())
+  title       String
+  isPublished Boolean        @default(false)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  order       Int
+  courseId    Int
+  slug        String?
+  lectures    Lecture[]
+  course      Course         @relation(fields: [courseId], references: [id])
+  progress    WeekProgress[]
+}
+
+model Lecture {
+  id                  Int               @id @default(autoincrement())
+  title               String
+  video               String?
+  description         String?
+  notes               String?
+  isPublished         Boolean           @default(false)
+  isFree              Boolean           @default(false)
+  isActive            Boolean           @default(true)
+  order               Int
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  cover               String?
+  weekId              Int
+  slug                String?
+  languageId          Int[]
+  videoMetaData       Json?
+  personalEnvironment Boolean?          @default(false)
+  type                LectureTypes      @default(TECH_LECTURE)
+  exercises           Exercise[]
+  week                Week              @relation(fields: [weekId], references: [id])
+  progress            LectureProgress[]
+  Notes               Notes[]
+  reviews             Review[]
+  VideoProgress       VideoProgress[]
+}
+
+model Exercise {
+  id             Int                @id @default(autoincrement())
+  title          String?
+  level          ExerciseLevel
+  description    String?
+  isActive       Boolean            @default(true)
+  isPublished    Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  extras         Json[]
+  testCases      Json[]
+  code           Json
+  lectureId      Int
+  slug           String?
+  mandatory      Boolean            @default(true)
+  languageId     Int[]              @default([1])
+  order          Int?
+  countDown      Int                @default(30)
+  Ai             Ai[]
+  AiRequest      AiRequest[]
+  lecture        Lecture            @relation(fields: [lectureId], references: [id])
+  ExerciseReview ExerciseReview[]
+  submissions    Submission[]
+  solution       ExerciseSolution[]
+  AiPrompt       AiPrompt[]
+}
+
+model Submission {
+  exerciseId Int
+  userId     Int
+  status     SubmissionStatus @default(TODO)
+  code       Json
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  exercise   Exercise         @relation(fields: [exerciseId], references: [id])
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, userId])
+}
+
+model Review {
+  rating    Int
+  comment   String
+  userId    Int
+  lectureId Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  for       ReviewFor @default(VIDEO)
+  id        Int       @id @default(autoincrement())
+  courseId  Int
+  course    Course    @relation(fields: [courseId], references: [id])
+  lecture   Lecture   @relation(fields: [lectureId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ExerciseReview {
+  rating     Int
+  comment    String
+  exerciseId Int
+  userId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  courseId   Int
+  course     Course   @relation(fields: [courseId], references: [id])
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CourseProgress {
+  userId   Int
+  courseId Int
+  course   Course @relation(fields: [courseId], references: [id])
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, courseId])
+}
+
+model WeekProgress {
+  userId Int
+  weekId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  week   Week @relation(fields: [weekId], references: [id])
+
+  @@id([userId, weekId])
+}
+
+model LectureProgress {
+  userId    Int
+  lectureId Int
+  lecture   Lecture @relation(fields: [lectureId], references: [id])
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, lectureId])
+}
+
+model NotificationObject {
+  id            Int            @id @default(autoincrement())
+  content       String         @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  notifications Notification[]
+}
+
+model Notification {
+  id             Int                @id @default(autoincrement())
+  senderId       Int?
+  receiverId     Int
+  readAt         DateTime?
+  notificationId Int
+  notification   NotificationObject @relation(fields: [notificationId], references: [id])
+  receiver       User               @relation(fields: [receiverId], references: [id], onDelete: Cascade)
+  sender         User?              @relation("AdminCreatedNotifications", fields: [senderId], references: [id])
+}
+
+model Ai {
+  id         Int         @id @default(autoincrement())
+  input      String
+  output     String
+  exerciseId Int
+  userId     Int
+  createdAt  DateTime    @default(now())
+  exercise   Exercise    @relation(fields: [exerciseId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  AiRequest  AiRequest[]
+}
+
+model AiRequest {
+  id         Int      @id @default(autoincrement())
+  exerciseId Int
+  userId     Int
+  request    Int
+  aiId       Int
+  ai         Ai       @relation(fields: [aiId], references: [id])
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model AiParameters {
+  id          Int     @id @default(autoincrement())
+  model       String
+  maxTokens   Int
+  temperature Decimal
+}
+
+model AiPrompt {
+  id         Int      @id @default(autoincrement())
+  exerciseId Int
+  userId     Int
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  text       String
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Notes {
+  id        Int      @id @default(autoincrement())
+  notes     String
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lectureId Int
+  courseId  Int?
+  lecture   Lecture  @relation(fields: [lectureId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_notes_course")
+}
+
+model userActivity {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  lastSeen DateTime
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+model amoCRM {
+  id           Int     @id @default(autoincrement())
+  accessToken  String
+  expiresAt    Decimal
+  expiresIn    Decimal
+  refreshToken String
+  tokenType    String
+}
+
+model Language {
+  id        Int      @id @default(autoincrement())
+  title     String
+  code      Int
+  alias     String?
+  language  String?
+  courseId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Course    Course   @relation(fields: [courseId], references: [id])
+}
+
+model remoteDatabase {
+  id               Int         @id @default(autoincrement())
+  userId           Int
+  databaseUser     String?     @db.VarChar(255)
+  databasePassword String?     @db.VarChar(255)
+  databaseName     String?     @db.VarChar(255)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  isActive         Boolean?    @default(true)
+  environmentId    Int         @unique
+  Environment      Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User             User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Environment {
+  id              Int              @id @default(autoincrement())
+  userId          Int
+  instanceId      String?          @db.VarChar(255)
+  instanceIp      String?          @db.VarChar(255)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime         @db.Timestamp(6)
+  deletedAt       DateTime?        @db.Timestamp(6)
+  status          String?          @db.VarChar
+  dnsSubdomain    String?
+  actualCreatedAt DateTime         @default(now()) @db.Timestamp(6)
+  User            User             @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  remoteDatabase  remoteDatabase?
+  type            EnvironmentTypes @default(PERSONAL_ENVIRONMENT)
+  Course          Course?          @relation(fields: [courseId], references: [id])
+  courseId        Int
+  sshPassword     String?
+  timer           String?
+}
+
+model userMetaData {
+  id      Int     @id @default(autoincrement())
+  ip      String? @db.VarChar(255)
+  city    String? @db.VarChar(255)
+  region  String? @db.VarChar(255)
+  country String? @db.VarChar(255)
+  userId  Int?    @unique
+  User    User?   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model ExerciseSolution {
+  id         Int      @id @default(autoincrement())
+  solution   String
+  exerciseId Int
+  userId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  Exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_exercisesolution_exercise")
+}
+
+model aiGuideUsers {
+  id        Int      @id @default(autoincrement())
+  userName  String
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model VideoProgress {
+  userId    Int
+  lectureId Int
+
+  time     Int
+  lastSeen DateTime?
+
+  Lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User    User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, lectureId])
+}
+
+model userSubscription {
+  userId           Int
+  courseId         Int
+  plan             UserPlan  @default(FREE)
+  planRange        PlanRange @default(FREE)
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  switchToFreePlan DateTime?
+  Course           Course    @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User             User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, courseId])
+}
+
+model Quiz {
+  id                Int      @id @default(autoincrement())
+  title             String
+  slug              String
+  preferredCategory String
+  description       String
+  cover             String
+  questionsCount    Int      @default(0)
+  time              String
+  isActive          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  questions        QuizQuestion[]
+  completedQuizzes CompletedQuiz[]
+}
+
+model QuizUser {
+  id        Int     @id @default(autoincrement())
+  firstName String
+  lastName  String
+  email     String  @unique
+  phone     String?
+  leadId    Int?
+
+  completedQuizzes CompletedQuiz[]
+}
+
+model CompletedQuiz {
+  id Int @id @default(autoincrement())
+
+  quizUserId Int
+  quizId     Int
+
+  category String
+
+  createdAt DateTime @default(now())
+
+  quizUser QuizUser @relation(fields: [quizUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  quiz     Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model QuizOption {
+  id         Int    @id @default(autoincrement())
+  questionId Int
+  optionText String
+  score      Int    @default(1)
+  category   String
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model QuizQuestion {
+  id           Int          @id @default(autoincrement())
+  quizId       Int
+  questionText String
+  order        Int
+  quiz         Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  options      QuizOption[]
+}
+
+enum UserPlan {
+  FREE
+  PAID
+  PRO
+  PREMIUM
+}
+
+enum PlanRange {
+  FREE
+  MONTHLY
+  ANNUALLY
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  BETATESTER
+  MENTOR
+  TECH_SUPPORT
+}
+
+enum SubmissionStatus {
+  TODO
+  SOLVED
+  ATTEMPTED
+}
+
+enum ExerciseLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ReviewFor {
+  VIDEO
+  TEXT_TUTORIAL
+}
+
+enum LectureTypes {
+  TECH_LECTURE
+  SOFT_SKILLS
+}
+
+enum EnvironmentTypes {
+  PERSONAL_ENVIRONMENT
+  LINUX_LECTURE
+  LINUX_EXERCISE
+}
