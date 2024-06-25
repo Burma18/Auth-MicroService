@@ -5,10 +5,10 @@ import {
   Res,
   HttpCode,
   HttpStatus,
-  Req,
-  Get,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -16,6 +16,7 @@ export class AuthController {
 
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
   async sendOtp(@Body('email') email: string) {
     return this.authService.sendOtp(email);
   }

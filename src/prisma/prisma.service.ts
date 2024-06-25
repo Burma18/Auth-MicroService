@@ -16,7 +16,9 @@ export class PrismaService
       },
     });
   }
+
   async onModuleInit() {
+    console.log(this.configService.get<string>('DATABASE_URL'));
     await this.$connect();
   }
 

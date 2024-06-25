@@ -36,7 +36,7 @@ export class AuthService {
     this.otpCache.set(email, { otp, expiresAt });
   }
 
-  getOtp(email: string): string | null {
+  getOtp(email: string): { otp: string; expiresAt: number } {
     const data = this.otpCache.get(email);
     if (!data) return null;
 
@@ -45,13 +45,25 @@ export class AuthService {
       return null;
     }
 
-    return data.otp;
+    return data;
   }
 
   async sendOtp(email: string): Promise<{ message: string }> {
+    const existingOtp = this.getOtp(email);
+    if (existingOtp) {
+      const currentTime = moment().unix();
+      const timeRemaining = existingOtp.expiresAt - currentTime;
+
+      if (timeRemaining > 0) {
+        throw new UnauthorizedException(
+          `You have already requested OTP. Please try again in ${Math.ceil(timeRemaining / 60)} minutes.`,
+        );
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: { organization: true },
+      include: { Organizations: true },
     });
 
     console.log({ user });
@@ -61,8 +73,6 @@ export class AuthService {
     }
 
     const otp = this.generateOtp();
-
-    console.log({ otp });
     this.setOtp(email, otp);
 
     const msg = {
@@ -89,40 +99,58 @@ export class AuthService {
     email: string,
     otp: string,
   ): Promise<{ status: number; redirectUrl: string; token: string }> {
-    const storedOtp = this.getOtp(email);
+    const data = this.getOtp(email);
 
-    console.log({ storedOtp, otp });
-    if (storedOtp !== otp.toString()) {
+    if (data.otp !== otp.toString()) {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
     this.otpCache.delete(email);
 
-    const user = await this.prisma.user.findUnique({
+    const userWithMembershipAndOrg = await this.prisma.user.findUnique({
       where: { email },
-      include: { organization: true },
+      include: {
+        Organizations: true,
+        Memberships: {
+          include: {
+            Organizations: true,
+          },
+        },
+      },
     });
 
-    if (!user) {
+    if (!userWithMembershipAndOrg) {
       throw new UnauthorizedException('User not found');
     }
 
+    const { id: userId, role, Memberships } = userWithMembershipAndOrg;
+    const userHasMembership = Memberships.find((m) => m.isActive);
+
+    if (!userHasMembership) {
+      throw new UnauthorizedException('User membership not found');
+    }
+
+    const organization = userHasMembership.Organizations;
+
+    if (!organization) {
+      throw new UnauthorizedException('Organization not found');
+    }
+
     const payload = {
-      email: user.email,
-      sub: user.id,
-      organizationId: user.organizationId,
+      email: userWithMembershipAndOrg.email,
+      sub: userId,
+      organizationId: userHasMembership.organizationId,
+      role: role,
     };
     const token = jwt.sign(
       payload,
       this.configService.get<string>('JWT_SECRET'),
-      { expiresIn: '1h' },
+      { expiresIn: '24h' },
     );
-
-    console.log({ payload, token });
 
     return {
       status: 200,
-      redirectUrl: `https://${user.organization.domain}`,
+      redirectUrl: `https://${organization.name}`,
       token,
     };
   }
