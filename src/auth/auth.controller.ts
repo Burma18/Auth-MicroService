@@ -2,13 +2,15 @@ import {
   Controller,
   Post,
   Body,
-  Res,
   HttpCode,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { SendOtp, validateOtp } from './dto/auth.credentials.dto';
+import { JwtInterceptor } from './interceptors/jwt.interceptor';
 
 @Controller('auth')
 export class AuthController {
@@ -17,19 +19,17 @@ export class AuthController {
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
-  async sendOtp(@Body('email') email: string) {
-    return this.authService.sendOtp(email);
+  async sendOtp(@Body() sendOtpDto: SendOtp) {
+    return this.authService.sendOtp(sendOtpDto.email);
   }
 
   @Post('validate-otp')
   @HttpCode(HttpStatus.OK)
-  async validateOtp(
-    @Body('email') email: string,
-    @Body('otp') otp: string,
-    @Res() res,
-  ) {
-    const result = await this.authService.validateOtp(email, otp);
-    res.cookie('session', result.token, { httpOnly: true });
-    return res.send({ redirectUrl: result.redirectUrl });
+  @UseInterceptors(JwtInterceptor)
+  async validateOtp(@Body() validateOtpDto: validateOtp) {
+    return this.authService.validateOtp(
+      validateOtpDto.email,
+      validateOtpDto.otp,
+    );
   }
 }
