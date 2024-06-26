@@ -1,11 +1,18 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpService } from 'src/otp/otp.service';
+import jwt from 'jsonwebtoken';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
     private readonly otpService: OtpService,
   ) {}
 
@@ -90,5 +97,42 @@ export class AuthService {
       organizationName: organization.name,
       role: role,
     };
+  }
+
+  verifyToken(token: string): any {
+    try {
+      return jwt.verify(token, this.configService.get<string>('JWT_SECRET'));
+    } catch (error) {
+      throw new UnauthorizedException('Invalid Token');
+    }
+  }
+
+  async verifyUser(token: string): Promise<{
+    email: string;
+    sub: number;
+    organizationId: number;
+    role: string;
+  }> {
+    const user = this.verifyToken(token);
+    if (!user) {
+      throw new UnauthorizedException('Ivalid token');
+    }
+
+    return user;
+  }
+
+  async verifyAdmin(token: string): Promise<any> {
+    const user = this.verifyToken(token);
+    if (!user) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    if (user.role !== 'ADMIN') {
+      throw new ForbiddenException(
+        'You do not have permission to access this resource',
+      );
+    }
+
+    return user;
   }
 }

@@ -13,3 +13,8 @@ export class validateOtp {
   @Length(6, 6)
   otp: string;
 }
+
+export class VerifyTokenDto {
+  @IsString()
+  token: string;
+}

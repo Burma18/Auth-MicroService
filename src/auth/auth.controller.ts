@@ -9,7 +9,11 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { SendOtp, validateOtp } from './dto/auth.credentials.dto';
+import {
+  SendOtp,
+  VerifyTokenDto,
+  validateOtp,
+} from './dto/auth.credentials.dto';
 import { JwtInterceptor } from './interceptors/jwt.interceptor';
 
 @Controller('auth')
@@ -31,5 +35,17 @@ export class AuthController {
       validateOtpDto.email,
       validateOtpDto.otp,
     );
+  }
+
+  @Post('verify-user')
+  @HttpCode(HttpStatus.OK)
+  async verifyUser(@Body() verifyTokenDto: VerifyTokenDto) {
+    await this.authService.verifyUser(verifyTokenDto.token);
+  }
+
+  @Post('verify-admin')
+  @HttpCode(HttpStatus.OK)
+  async verifyAdmin(@Body() verifyTokenDto: VerifyTokenDto) {
+    await this.authService.verifyAdmin(verifyTokenDto.token);
   }
 }
