@@ -8,10 +8,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const logger = new Logger('Bootstrap');
-  app.use((req, next) => {
-    req.app.set('trust proxy', 1);
-    next();
-  });
+
+  app.set('trust proxy', 1);
 
   app.enableCors({
     origin: [
@@ -39,8 +37,11 @@ async function bootstrap() {
   });
 
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.use(logger);
+  app.useLogger(logger);
 
-  await app.listen(3002);
+  await app.listen(3002, () => {
+    logger.log('NestJS application is listening on port 3002');
+  });
 }
+
 bootstrap();
