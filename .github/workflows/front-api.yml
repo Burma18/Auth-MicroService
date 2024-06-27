@@ -1,0 +1,117 @@
+name: Deploy to the FRONTEND-API environment
+
+env:
+  TEST_IMAGE_TAG: dev-${{ github.run_id }}-${{ github.run_attempt }}
+  TEST_IMAGE: wedevx/backend-test
+  DEPLOYMENT: backend-front
+  AWS_EKS_CLUSTER: dev-wedevx
+  ENVIRONMENT: front
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create GitHub Deployment
+        id: create_deployment
+        uses: chrnorm/deployment-action@releases/v1
+        with:
+          token: ${{ secrets.GIT_DEPLOY_TOKEN }}
+          environment: front-api
+          description: Deploying to front-api
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          dockerfile: Dockerfile
+          push: true
+          tags: ${{ env.TEST_IMAGE }}:${{ env.TEST_IMAGE_TAG }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v2.0
+        with:
+          version: 'v1.24.0'
+        id: install
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name  ${{ env.AWS_EKS_CLUSTER }}  --region eu-west-1
+
+      - name: Upgrade app with new features
+        run: kubectl set image deployment/${{ env.DEPLOYMENT }} -n ${{ env.ENVIRONMENT }} ${{ env.DEPLOYMENT }}=${{ env.TEST_IMAGE }}:${{ env.TEST_IMAGE_TAG }}
+
+      - name: Check if changes are applied
+        run: kubectl rollout status deployment/${{ env.DEPLOYMENT }} -n ${{ env.ENVIRONMENT }} --timeout=500s
+
+      # - name: Update kubeconfig
+      #   run: aws eks update-kubeconfig --name wedevx-2 --region eu-west-1
+
+      # - name: Upgrade app with new features
+      #   run: kubectl set image deployment/${{ env.DEPLOYMENT }} -n dev ${{ env.CONTAINER_NAME }}=${{ env.TEST_IMAGE }}:${{ env.TEST_IMAGE_TAG }}
+
+      # - name: Check if changes are applied
+      #   run: kubectl rollout status deployment/${{ env.DEPLOYMENT }} -n dev --timeout=250s
+
+      - name: Update GitHub Deployment Status (Success)
+        if: success()
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github.ant-man-preview+json" \
+            -H "Authorization: token ${{ secrets.GIT_DEPLOY_TOKEN }}" \
+            -d '{"state": "success"}' \
+            https://api.github.com/repos/${{ github.repository }}/deployments/${{ steps.create_deployment.outputs.deployment_id }}/statuses
+
+      - name: Update GitHub Deployment Status (Failure)
+        if: failure()
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github.ant-man-preview+json" \
+            -H "Authorization: token ${{ secrets.GIT_DEPLOY_TOKEN }}" \
+            -d '{"state": "failure"}' \
+            https://api.github.com/repos/${{ github.repository }}/deployments/${{ steps.create_deployment.outputs.deployment_id }}/statuses
+
+      # - name: Notify if it's succeed
+      #   uses: rtCamp/action-slack-notify@v2
+      #   env:
+      #     SLACK_CHANNEL: cicd-verification
+      #     SLACK_COLOR: ${{ job.status }} # or a specific color like 'good' or '#ff00ff'
+      #     SLACK_ICON: https://github.com/rtCamp.png?size=48
+      #     SLACK_MESSAGE: 'Code deployed to https://front-api.wedevx.co :rocket:'
+      #     SLACK_TITLE: Successfully deployed to the FRONTEND-API ENVIRONMENT
+      #     SLACK_USERNAME: rtCamp
+      #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+      # - name: Notify if it's failed
+      #   uses: rtCamp/action-slack-notify@v2
+      #   if: failure()
+      #   env:
+      #     SLACK_CHANNEL: ci-cd-failure
+      #     SLACK_COLOR: ${{ job.status }} # or a specific color like 'good' or '#ff00ff'
+      #     SLACK_ICON: https://github.com/rtCamp.png?size=48
+      #     SLACK_MESSAGE: 'Error: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} :large_red_square:'
+      #     SLACK_TITLE: Error in workflow
+      #     SLACK_USERNAME: rtCamp
+      #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_FAILURE }}
