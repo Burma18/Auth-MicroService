@@ -1,10 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { Logger } from '@nestjs/common';
+import { HttpExceptionFilter } from './filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  const logger = new Logger('Bootstrap');
   app.use((req, next) => {
     req.app.set('trust proxy', 1);
     next();
@@ -34,6 +37,9 @@ async function bootstrap() {
     ],
     credentials: true,
   });
+
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.use(logger);
 
   await app.listen(3002);
 }
