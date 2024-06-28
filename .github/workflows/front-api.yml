@@ -2,7 +2,7 @@ name: Deploy to the FRONTEND-API environment
 
 env:
   TEST_IMAGE_TAG: dev-${{ github.run_id }}-${{ github.run_attempt }}
-  TEST_IMAGE: wedevx/backend-test
+  TEST_IMAGE: wedevx/auth-service
   DEPLOYMENT: backend-front
   AWS_EKS_CLUSTER: dev-wedevx
   ENVIRONMENT: front
