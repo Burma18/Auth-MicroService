@@ -20,6 +20,6 @@ WORKDIR /home/app/api
 
 COPY --from=build /home/app/api .
 
-EXPOSE 3002
+EXPOSE 5002
 
 CMD ["npm", "run", "start", "--host", "0.0.0.0"]
