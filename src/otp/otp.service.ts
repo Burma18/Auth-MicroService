@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import sgMail from '@sendgrid/mail';
 import moment from 'moment';
+import { ErrorEnum } from '../error.enum'; // Import the ErrorEnum
 
 @Injectable()
 export class OtpService {
@@ -35,27 +36,31 @@ export class OtpService {
   }
 
   async sendOtp(email: string): Promise<void> {
-    const existingOtp = this.getOtp(email);
-    if (existingOtp) {
-      const currentTime = moment().unix();
-      const timeRemaining = existingOtp.expiresAt - currentTime;
-      if (timeRemaining > 0) {
-        throw new UnauthorizedException(
-          `Please try again in ${Math.ceil(timeRemaining / 60)} minutes.`,
-        );
+    try {
+      const existingOtp = this.getOtp(email);
+      if (existingOtp) {
+        const currentTime = moment().unix();
+        const timeRemaining = existingOtp.expiresAt - currentTime;
+        if (timeRemaining > 0) {
+          throw new UnauthorizedException(
+            `${ErrorEnum.RETRY_OTP} in ${Math.ceil(timeRemaining / 60)} minutes.`,
+          );
+        }
       }
+      const otp = this.generateOtp();
+      this.setOtp(email, otp);
+
+      const msg = {
+        to: email,
+        from: this.configService.get<string>('SENDGRID_SENDER_EMAIL'),
+        subject: 'Your OTP Code',
+        text: `Your OTP Code is ${otp}`,
+        html: `<strong>Your OTP code is ${otp} </strong>`,
+      };
+
+      await sgMail.send(msg);
+    } catch (error) {
+      throw error;
     }
-    const otp = this.generateOtp();
-    this.setOtp(email, otp);
-
-    const msg = {
-      to: email,
-      from: this.configService.get<string>('SENDGRID_SENDER_EMAIL'),
-      subject: 'Your OTP Code',
-      text: `Your OTP Code is ${otp}`,
-      html: `<strong>Your OTP code is ${otp} </strong>`,
-    };
-
-    await sgMail.send(msg);
   }
 }

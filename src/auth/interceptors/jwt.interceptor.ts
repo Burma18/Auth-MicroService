@@ -4,14 +4,13 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import jwt from 'jsonwebtoken';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class JwtInterceptor implements NestInterceptor {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly jwtService: JwtService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
@@ -19,16 +18,12 @@ export class JwtInterceptor implements NestInterceptor {
         const { email, sub, organizationId, organizationName, role } = data;
         const payload = { email, sub, organizationId, role };
 
-        const token = jwt.sign(
-          payload,
-          this.configService.get<string>('JWT_SECRET'),
-          { expiresIn: '24h' },
-        );
+        const token = this.jwtService.sign(payload);
 
-        const response = context.switchToHttp().getResponse();
-        response.cookie('session', token, { httpOnly: true });
-
-        return { redirectUrl: `${organizationName}` };
+        return {
+          redirectUrl: `${organizationName}`,
+          token: token,
+        };
       }),
     );
   }

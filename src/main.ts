@@ -9,8 +9,6 @@ async function bootstrap() {
 
   const logger = new Logger('Bootstrap');
 
-  console.log('reached bootstrap');
-
   app.set('trust proxy', 1);
 
   app.enableCors({
