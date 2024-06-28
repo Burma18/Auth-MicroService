@@ -39,7 +39,7 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useLogger(logger);
 
-  await app.listen(3002, () => {
+  await app.listen(5555, () => {
     logger.log('NestJS application is listening on port 3002');
   });
 }
