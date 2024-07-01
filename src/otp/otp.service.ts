@@ -1,11 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import sgMail from '@sendgrid/mail';
 import moment from 'moment';
-import { ErrorEnum } from '../error.enum'; // Import the ErrorEnum
+import { ErrorEnum } from '../error.enum';
 
 @Injectable()
 export class OtpService {
+  private readonly logger = new Logger(OtpService.name);
   private otpCache: Map<string, { otp: string; expiresAt: number }> = new Map();
 
   constructor(private readonly configService: ConfigService) {
@@ -60,7 +61,8 @@ export class OtpService {
 
       await sgMail.send(msg);
     } catch (error) {
-      throw error;
+      this.logger.error(`Error in sendOtp: ${error.message}`, error.stack);
+      throw new UnauthorizedException(ErrorEnum.ERROR_SEND_OTP);
     }
   }
 }

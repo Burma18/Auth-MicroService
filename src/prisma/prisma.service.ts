@@ -1,17 +1,20 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
-
-export enum PrismaServiceError {
-  DatabaseConnectionError = 'Failed to connect to the database',
-  DatabaseDisconnectionError = 'Failed to disconnect from the database',
-}
+import { ErrorEnum } from '../error.enum';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  private readonly logger = new Logger(PrismaService.name);
+
   constructor(private configService: ConfigService) {
     super({
       datasources: {
@@ -27,7 +30,7 @@ export class PrismaService
       this.configService.get<string>('DATABASE_URL');
       await this.$connect();
     } catch (error) {
-      throw new Error(PrismaServiceError.DatabaseConnectionError);
+      this.logger.error(ErrorEnum.DATABASE_CONNECTION_ERROR, error.message);
     }
   }
 
@@ -35,7 +38,7 @@ export class PrismaService
     try {
       await this.$disconnect();
     } catch (error) {
-      throw new Error(PrismaServiceError.DatabaseDisconnectionError);
+      this.logger.error(ErrorEnum.DATABASE_DISCONNECTION_ERROR, error.message);
     }
   }
 }

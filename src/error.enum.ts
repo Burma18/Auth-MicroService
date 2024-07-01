@@ -5,6 +5,8 @@ export enum ErrorEnum {
   RETRY_OTP = 'Please try again later.',
   NO_MEMBERSHIP = 'User membership not found',
   NO_ORGANIZATION = 'Organization not found',
-  DatabaseConnectionError = 'Failed to connect to the database',
-  DatabaseDisconnectionError = 'Failed to disconnect from the database',
+  DATABASE_CONNECTION_ERROR = 'Failed to connect to the database',
+  DATABASE_DISCONNECTION_ERROR = 'Failed to disconnect from the database',
+  ERROR_SEND_OTP = 'Error while sending OTP',
+  ERROR_VALIDATE_OTP = 'Error while validating OTP',
 }

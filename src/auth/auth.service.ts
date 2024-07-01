@@ -1,10 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpService } from 'src/otp/otp.service';
 import { ErrorEnum } from '../error.enum';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly otpService: OtpService,
@@ -38,7 +40,8 @@ export class AuthService {
       await this.otpService.sendOtp(email);
       return { message: 'OTP sent' };
     } catch (error) {
-      throw error;
+      this.logger.error(`Error in sendOtp: ${error.message}`, error.stack);
+      throw new UnauthorizedException(ErrorEnum.ERROR_SEND_OTP);
     }
   }
 
@@ -95,7 +98,8 @@ export class AuthService {
         role: role,
       };
     } catch (error) {
-      throw error;
+      this.logger.error(`Error in validateOtp: ${error.message}`, error.stack);
+      throw new UnauthorizedException(ErrorEnum.ERROR_VALIDATE_OTP);
     }
   }
 }
