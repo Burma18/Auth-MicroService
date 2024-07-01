@@ -24,7 +24,11 @@ export class JwtInterceptor implements NestInterceptor {
 
         response.cookie('session', token, { httpOnly: true });
 
-        return { redirectUrl: `${organizationName}` };
+        if (context.getHandler().name === 'validateOtp') {
+          return { redirectUrl: `${organizationName}` };
+        } else {
+          return { message: 'Login successful' };
+        }
       }),
     );
   }

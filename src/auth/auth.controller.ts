@@ -9,7 +9,11 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { SendOtp, validateOtp } from './dto/auth.credentials.dto';
+import {
+  LoginAdminDto,
+  SendOtp,
+  validateOtp,
+} from './dto/auth.credentials.dto';
 import { JwtInterceptor } from './interceptors/jwt.interceptor';
 
 @Controller('auth')
@@ -31,5 +35,13 @@ export class AuthController {
       validateOtpDto.email,
       validateOtpDto.otp,
     );
+  }
+
+  @Post('loginAdmin')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @UseInterceptors(JwtInterceptor)
+  async login(@Body() loginDto: LoginAdminDto) {
+    return this.authService.loginAdmin(loginDto.email, loginDto.password);
   }
 }

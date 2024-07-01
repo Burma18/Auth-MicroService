@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Length } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 
 export class SendOtp {
   @IsEmail()
@@ -12,4 +12,12 @@ export class validateOtp {
   @IsString()
   @Length(6, 6)
   otp: string;
+}
+
+export class LoginAdminDto {
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  password: string;
 }

@@ -9,4 +9,7 @@ export enum ErrorEnum {
   DATABASE_DISCONNECTION_ERROR = 'Failed to disconnect from the database',
   ERROR_SEND_OTP = 'Error while sending OTP',
   ERROR_VALIDATE_OTP = 'Error while validating OTP',
+  USER_NOT_ADMIN = 'User is not an admin',
+  INVALID_CREDENTIALS = 'Invalid email or password',
+  LOGIN_AUTHENTICATION_FAILED = 'Login authentication failed',
 }
