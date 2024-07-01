@@ -20,10 +20,11 @@ export class JwtInterceptor implements NestInterceptor {
 
         const token = this.jwtService.sign(payload);
 
-        return {
-          redirectUrl: `${organizationName}`,
-          token: token,
-        };
+        const response = context.switchToHttp().getResponse();
+
+        response.cookie('session', token, { httpOnly: true });
+
+        return { redirectUrl: `${organizationName}` };
       }),
     );
   }
