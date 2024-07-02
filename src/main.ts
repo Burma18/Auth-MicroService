@@ -40,7 +40,7 @@ async function bootstrap() {
   app.useLogger(logger);
 
   await app.listen(5002, () => {
-    logger.log('NestJS application is listening on port 3002');
+    logger.log('NestJS application is listening on port 5002');
   });
 }
 

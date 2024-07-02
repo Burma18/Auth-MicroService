@@ -15,7 +15,8 @@ export class JwtInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((data) => {
-        const { email, sub, organizationId, organizationName, role } = data;
+        const { email, sub, organizationId, organizationName, adminUrl, role } =
+          data;
         const payload = { email, sub, organizationId, role };
 
         const token = this.jwtService.sign(payload);
@@ -27,7 +28,7 @@ export class JwtInterceptor implements NestInterceptor {
         if (context.getHandler().name === 'validateOtp') {
           return { redirectUrl: `${organizationName}` };
         } else {
-          return { message: 'Login successful' };
+          return { redirectUrl: `${adminUrl}` };
         }
       }),
     );
